@@ -1,5 +1,14 @@
 import crypto from "node:crypto";
 
+/**
+ * Webhook secret DERIVED from the bot token (not a separate env var), so the
+ * value the server enforces always matches what we register with Telegram.
+ * Must stay in sync with scripts/setup-bot.mjs.
+ */
+export function deriveWebhookSecret(token: string): string {
+  return crypto.createHash("sha256").update("depflow-webhook:" + token).digest("hex").slice(0, 40);
+}
+
 export interface TelegramUser {
   id: number;
   first_name?: string;
