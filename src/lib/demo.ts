@@ -108,6 +108,36 @@ export const demoStore = {
 
   getDeposits: () => [...deposits],
   getWithdrawals: () => [...withdrawals],
+
+  addLink(input: { name: string; geo_id: string; plan_count: number; plan_amount: number; amount_presets: number[] }) {
+    const geo = DEMO_LINKS.find((l) => l.geo_id === input.geo_id);
+    links.unshift({
+      link_id: crypto.randomUUID(),
+      name: input.name,
+      geo_id: input.geo_id,
+      geo_code: geo?.geo_code ?? input.name,
+      flag_emoji: geo?.flag_emoji ?? "🌐",
+      plan_count: input.plan_count,
+      plan_amount: input.plan_amount,
+      amount_presets: input.amount_presets,
+      is_archived: false,
+      deposits_count: 0,
+      deposits_sum: 0,
+      last_deposit_at: null,
+      plan_pct: 0,
+    });
+  },
+
+  updateLink(id: string, patch: Partial<LinkTodayStats>) {
+    const link = links.find((l) => l.link_id === id);
+    if (!link) return;
+    Object.assign(link, patch);
+    link.plan_pct = link.plan_count ? Math.round((link.deposits_count / link.plan_count) * 100) : 0;
+  },
+
+  archiveLink(id: string) {
+    links = links.filter((l) => l.link_id !== id);
+  },
 };
 
 export const IS_DEMO = !process.env.NEXT_PUBLIC_SUPABASE_URL;

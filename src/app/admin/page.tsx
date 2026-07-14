@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import { useLinks } from "@/lib/useLinks";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/useAuth";
+import { useAdminLinkActions } from "@/lib/useAdmin";
+import { LinkFormSheet } from "@/components/LinkFormSheet";
 import { apiFetch } from "@/lib/api";
 import { IS_DEMO } from "@/lib/demo";
 import { haptic } from "@/lib/utils";
+import type { LinkTodayStats } from "@/lib/types";
 
 interface InviteKey {
   id?: string;
@@ -18,10 +21,34 @@ interface InviteKey {
 export default function AdminPage() {
   const { data: links } = useLinks();
   const { isAdmin } = useAuth();
+  const linkActions = useAdminLinkActions();
   const toast = useToast();
   const [keys, setKeys] = useState<InviteKey[]>([]);
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<"links" | "keys" | "audit">("links");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<LinkTodayStats | null>(null);
+
+  function openCreate() {
+    haptic("light");
+    setEditing(null);
+    setFormOpen(true);
+  }
+  function openEdit(link: LinkTodayStats) {
+    haptic("light");
+    setEditing(link);
+    setFormOpen(true);
+  }
+  async function archive(link: LinkTodayStats) {
+    if (!confirm(`Архивировать «${link.name}»? История депозитов сохранится, но ссылка исчезнет с дашборда.`)) return;
+    try {
+      await linkActions.archiveLink(link.link_id);
+      haptic("success");
+      toast.show({ message: `«${link.name}» в архиве`, kind: "warn" });
+    } catch {
+      toast.show({ message: "Не удалось архивировать", kind: "error" });
+    }
+  }
 
   // Load existing keys from the API (real mode only).
   useEffect(() => {
@@ -83,20 +110,33 @@ export default function AdminPage() {
 
       {tab === "links" && (
         <div className="mt-4 space-y-2">
-          <button className="tap-scale w-full rounded-xl border border-dashed border-brand-500/40 bg-brand-500/10 py-3 text-sm font-semibold text-brand-400">
+          <button
+            onClick={openCreate}
+            className="tap-scale w-full rounded-xl border border-dashed border-brand-500/40 bg-brand-500/10 py-3 text-sm font-semibold text-brand-400"
+          >
             + Новая ссылка
           </button>
+          {(!links || links.length === 0) && (
+            <p className="pt-4 text-center text-xs text-text-faint">Ссылок пока нет — создай первую</p>
+          )}
           {links?.map((l) => (
             <div key={l.link_id} className="glass flex items-center gap-3 p-3">
               <span className="text-xl">{l.flag_emoji}</span>
               <div className="flex-1">
                 <p className="text-sm font-semibold">{l.name}</p>
                 <p className="text-[11px] text-text-faint">
-                  План: {l.plan_count} деп · {l.geo_code}
+                  План: {l.plan_count} деп · ${l.plan_amount} · {l.geo_code}
                 </p>
               </div>
-              <button className="rounded-lg bg-white/10 px-3 py-1.5 text-xs">План</button>
-              <button className="rounded-lg bg-status-danger/15 px-3 py-1.5 text-xs text-status-danger">Архив</button>
+              <button onClick={() => openEdit(l)} className="tap-scale rounded-lg bg-white/10 px-3 py-1.5 text-xs">
+                Изм.
+              </button>
+              <button
+                onClick={() => archive(l)}
+                className="tap-scale rounded-lg bg-status-danger/15 px-3 py-1.5 text-xs text-status-danger"
+              >
+                Архив
+              </button>
             </div>
           ))}
         </div>
@@ -143,6 +183,8 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+
+      <LinkFormSheet open={formOpen} editing={editing} onClose={() => setFormOpen(false)} />
     </main>
   );
 }
