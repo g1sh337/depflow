@@ -15,9 +15,14 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
+import { createHash } from "node:crypto";
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
-const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || "";
+// Derived from the token — must match deriveWebhookSecret() in src/app/api/bot/route.ts
+const SECRET = TOKEN
+  ? createHash("sha256").update("depflow-webhook:" + TOKEN).digest("hex").slice(0, 40)
+  : "";
 
 if (!TOKEN || !APP_URL) {
   console.error("❌ Set TELEGRAM_BOT_TOKEN and NEXT_PUBLIC_APP_URL (in .env.local or env).");
