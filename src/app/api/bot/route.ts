@@ -28,5 +28,5 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 export function GET(): Response {
-  return new Response("DepFlow bot webhook is alive", { status: 200 });
+  return new Response("DepFlow bot webhook is alive [build:deploy-check-3]", { status: 200 });
 }
