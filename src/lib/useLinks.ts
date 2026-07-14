@@ -2,23 +2,22 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { demoStore, IS_DEMO } from "./demo";
+import { apiFetch } from "./api";
 import type { DepositType, LinkTodayStats } from "./types";
 
 async function fetchLinks(): Promise<LinkTodayStats[]> {
-  if (IS_DEMO) {
-    // simulate a small network latency for skeletons on first load
-    return demoStore.getLinks();
-  }
-  // TODO: Supabase path — select from `link_today_stats` view
-  const { getSupabase } = await import("./supabase");
-  const sb = getSupabase();
-  const { data, error } = await sb.from("link_today_stats").select("*").order("plan_pct", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as LinkTodayStats[];
+  if (IS_DEMO) return demoStore.getLinks();
+  const { links } = await apiFetch<{ links: LinkTodayStats[] }>("/api/links");
+  return links ?? [];
 }
 
 export function useLinks() {
-  return useQuery({ queryKey: ["links"], queryFn: fetchLinks });
+  return useQuery({
+    queryKey: ["links"],
+    queryFn: fetchLinks,
+    // near-real-time without page reload
+    refetchInterval: IS_DEMO ? false : 4000,
+  });
 }
 
 export function useLinkActions() {
@@ -33,16 +32,12 @@ export function useLinkActions() {
         invalidate();
         return dep.id;
       }
-      const { getSupabase } = await import("./supabase");
-      const sb = getSupabase();
-      const { data, error } = await sb
-        .from("deposits")
-        .insert({ link_id: linkId, amount, type })
-        .select("id")
-        .single();
-      if (error) throw error;
+      const { id } = await apiFetch<{ id: string }>("/api/deposits", {
+        method: "POST",
+        body: JSON.stringify({ link_id: linkId, amount, type }),
+      });
       invalidate();
-      return data!.id as string;
+      return id;
     },
 
     async undoDeposit(depId: string) {
@@ -51,9 +46,7 @@ export function useLinkActions() {
         invalidate();
         return;
       }
-      const { getSupabase } = await import("./supabase");
-      const sb = getSupabase();
-      await sb.from("deposits").update({ is_deleted: true }).eq("id", depId);
+      await apiFetch(`/api/deposits/${depId}/undo`, { method: "POST" });
       invalidate();
     },
 
@@ -63,9 +56,10 @@ export function useLinkActions() {
         invalidate();
         return;
       }
-      const { getSupabase } = await import("./supabase");
-      const sb = getSupabase();
-      await sb.from("withdrawals").insert({ link_id: linkId, amount });
+      await apiFetch("/api/withdrawals", {
+        method: "POST",
+        body: JSON.stringify({ link_id: linkId, amount }),
+      });
       invalidate();
     },
   };

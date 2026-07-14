@@ -1,20 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLinks } from "@/lib/useLinks";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/lib/useAuth";
+import { apiFetch } from "@/lib/api";
+import { IS_DEMO } from "@/lib/demo";
 import { haptic } from "@/lib/utils";
 
-function genKey() {
-  const seg = () => Math.random().toString(36).slice(2, 5).toUpperCase();
-  return `${seg()}-${seg()}-${seg()}`;
+interface InviteKey {
+  id?: string;
+  code: string;
+  role: string;
+  used_by?: string | null;
 }
 
 export default function AdminPage() {
   const { data: links } = useLinks();
+  const { isAdmin } = useAuth();
   const toast = useToast();
-  const [keys, setKeys] = useState<{ code: string; role: string }[]>([]);
+  const [keys, setKeys] = useState<InviteKey[]>([]);
+  const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<"links" | "keys" | "audit">("links");
+
+  // Load existing keys from the API (real mode only).
+  useEffect(() => {
+    if (IS_DEMO || tab !== "keys") return;
+    apiFetch<{ keys: InviteKey[] }>("/api/invite-keys")
+      .then((d) => setKeys(d.keys ?? []))
+      .catch(() => {});
+  }, [tab]);
+
+  async function createKey() {
+    setCreating(true);
+    try {
+      if (IS_DEMO) {
+        const seg = () => Math.random().toString(36).slice(2, 5).toUpperCase();
+        const code = `${seg()}-${seg()}-${seg()}`;
+        setKeys((k) => [{ code, role: "user" }, ...k]);
+        toast.show({ message: `Ключ создан: ${code}`, kind: "success", duration: 4000 });
+      } else {
+        const { key } = await apiFetch<{ key: InviteKey }>("/api/invite-keys", {
+          method: "POST",
+          body: JSON.stringify({ role: "user" }),
+        });
+        setKeys((k) => [key, ...k]);
+        toast.show({ message: `Ключ создан: ${key.code}`, kind: "success", duration: 5000 });
+      }
+      haptic("success");
+    } catch {
+      toast.show({ message: "Не удалось создать ключ", kind: "error" });
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  if (!isAdmin && !IS_DEMO) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <p className="text-3xl">🔒</p>
+        <p className="mt-3 text-sm text-text-soft">Раздел доступен только администраторам</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 px-4 pt-4">
@@ -57,21 +105,26 @@ export default function AdminPage() {
       {tab === "keys" && (
         <div className="mt-4 space-y-3">
           <button
-            onClick={() => {
-              haptic("success");
-              const code = genKey();
-              setKeys((k) => [{ code, role: "user" }, ...k]);
-              toast.show({ message: `Ключ создан: ${code}`, kind: "success", duration: 4000 });
-            }}
-            className="tap-scale w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white shadow-glow"
+            onClick={createKey}
+            disabled={creating}
+            className="tap-scale w-full rounded-xl bg-brand-500 py-3 text-sm font-bold text-white shadow-glow disabled:opacity-50"
           >
-            Сгенерировать инвайт-ключ
+            {creating ? "Создание…" : "Сгенерировать инвайт-ключ"}
           </button>
-          {keys.length === 0 && <p className="pt-6 text-center text-xs text-text-faint">Ключей пока нет</p>}
+          <p className="text-center text-[11px] text-text-faint">
+            Передай ключ напарнику — он введёт его при первом входе.
+          </p>
+          {keys.length === 0 && <p className="pt-4 text-center text-xs text-text-faint">Ключей пока нет</p>}
           {keys.map((k) => (
             <div key={k.code} className="glass flex items-center justify-between p-3">
               <span className="font-mono text-sm tracking-wider">{k.code}</span>
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-text-soft">не активирован · {k.role}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] ${
+                  k.used_by ? "bg-status-success/15 text-status-success" : "bg-white/10 text-text-soft"
+                }`}
+              >
+                {k.used_by ? "активирован" : "свободен"} · {k.role}
+              </span>
             </div>
           ))}
         </div>

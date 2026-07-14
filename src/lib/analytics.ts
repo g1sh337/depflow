@@ -88,6 +88,9 @@ export function getDemoAnalytics(period: Period) {
 
 export async function loadAnalytics(period: Period) {
   if (IS_DEMO) return getDemoAnalytics(period);
-  // TODO: Supabase RPC / aggregate queries with date range
-  return getDemoAnalytics(period);
+  const { apiFetch } = await import("./api");
+  const data = await apiFetch<{ kpis: Kpis; trend: TrendPoint[]; geo: GeoSlice[] }>(
+    `/api/analytics?period=${period}`,
+  );
+  return { kpis: data.kpis, trend: data.trend, geo: data.geo };
 }

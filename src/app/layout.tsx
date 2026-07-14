@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Providers } from "./providers";
 import { TabBar } from "@/components/TabBar";
+import { AuthGate } from "@/components/AuthGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,10 +26,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen">
         <Providers>
-          <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col pb-24">
-            {children}
-          </div>
-          <TabBar />
+          <AuthGate>
+            <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col pb-24">
+              {children}
+            </div>
+            <TabBar />
+          </AuthGate>
         </Providers>
       </body>
     </html>
