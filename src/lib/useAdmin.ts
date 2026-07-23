@@ -35,13 +35,22 @@ export function useGeos() {
   });
 }
 
-export async function createGeo(code: string, flag_emoji: string): Promise<Geo> {
-  if (IS_DEMO) return { id: crypto.randomUUID(), code, flag_emoji, sort_order: 99 };
-  const { geo } = await apiFetch<{ geo: Geo }>("/api/geos", {
-    method: "POST",
-    body: JSON.stringify({ code, flag_emoji }),
-  });
+export interface GeoInput {
+  code: string;
+  flag_emoji: string;
+  country_code?: string | null;
+  tag?: string | null;
+}
+
+export async function createGeo(input: GeoInput): Promise<Geo> {
+  if (IS_DEMO) return { id: crypto.randomUUID(), sort_order: 99, ...input };
+  const { geo } = await apiFetch<{ geo: Geo }>("/api/geos", { method: "POST", body: JSON.stringify(input) });
   return geo;
+}
+
+export async function updateGeo(id: string, patch: { code?: string; flag_emoji?: string; tag?: string | null }) {
+  if (IS_DEMO) return;
+  await apiFetch(`/api/geos/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
 export async function deleteGeo(id: string) {

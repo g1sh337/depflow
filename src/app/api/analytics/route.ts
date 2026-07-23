@@ -41,13 +41,13 @@ export async function GET(req: Request) {
     const [depsRes, wdsRes, geosRes, linksRes] = await Promise.all([
       sb.from("deposits").select("amount, type, link_id, geo_id, created_at").eq("is_deleted", false).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
       sb.from("withdrawals").select("amount, worker_share, link_id, created_at").eq("is_deleted", false).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
-      sb.from("geos").select("id, code, flag_emoji"),
+      sb.from("geos").select("id, code, flag_emoji, tag"),
       sb.from("links").select("id, name, geo_id"),
     ]);
 
     const deposits = depsRes.data ?? [];
     const withdrawals = wdsRes.data ?? [];
-    const geoMap = new Map((geosRes.data ?? []).map((g) => [g.id, g.code]));
+    const geoMap = new Map((geosRes.data ?? []).map((g) => [g.id, g.tag ? `${g.code} · ${g.tag}` : g.code]));
     const flagMap = new Map((geosRes.data ?? []).map((g) => [g.id, g.flag_emoji ?? "🌐"]));
     const links = linksRes.data ?? [];
 

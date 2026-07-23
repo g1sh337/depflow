@@ -3,10 +3,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGeos, useAdminLinkActions, createGeo, type LinkInput } from "@/lib/useAdmin";
+import { useGeos, useAdminLinkActions, type LinkInput } from "@/lib/useAdmin";
 import { useToast } from "@/components/Toast";
-import { haptic } from "@/lib/utils";
+import { haptic, geoLabel } from "@/lib/utils";
 import { Portal } from "@/components/Portal";
+import { GeoPicker } from "@/components/GeoPicker";
 import type { LinkTodayStats } from "@/lib/types";
 
 interface Props {
@@ -23,24 +24,6 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
   const qc = useQueryClient();
 
   const [addingGeo, setAddingGeo] = useState(false);
-  const [newGeoCode, setNewGeoCode] = useState("");
-  const [newGeoFlag, setNewGeoFlag] = useState("");
-
-  async function addGeo() {
-    if (!newGeoCode.trim()) return;
-    try {
-      const geo = await createGeo(newGeoCode.trim(), newGeoFlag.trim() || "🌐");
-      await qc.invalidateQueries({ queryKey: ["geos"] });
-      setGeoId(geo.id);
-      setNewGeoCode("");
-      setNewGeoFlag("");
-      setAddingGeo(false);
-      haptic("success");
-      toast.show({ message: `Гео ${geo.flag_emoji ?? ""} ${geo.code} добавлено`, kind: "success" });
-    } catch (e: any) {
-      toast.show({ message: e?.body?.reason === "duplicate" ? "Такое гео уже есть" : "Не удалось добавить гео", kind: "error" });
-    }
-  }
 
   const [name, setName] = useState("");
   const [geoId, setGeoId] = useState("");
@@ -138,7 +121,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
                 <select value={geoId} onChange={(e) => setGeoId(e.target.value)} className={inputCls}>
                   {(geos ?? []).map((g) => (
                     <option key={g.id} value={g.id} className="bg-bg-soft">
-                      {g.flag_emoji} {g.code}
+                      {g.flag_emoji} {geoLabel(g.code, g.tag)}
                     </option>
                   ))}
                 </select>
@@ -151,25 +134,16 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
                     + Новое гео
                   </button>
                 ) : (
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      value={newGeoFlag}
-                      onChange={(e) => setNewGeoFlag(e.target.value)}
-                      placeholder="🇰🇷"
-                      className={`${inputCls} w-14 text-center`}
+                  <div className="mt-2">
+                    <GeoPicker
+                      onCreated={(geo) => {
+                        qc.invalidateQueries({ queryKey: ["geos"] });
+                        setGeoId(geo.id);
+                        setAddingGeo(false);
+                      }}
                     />
-                    <input
-                      value={newGeoCode}
-                      onChange={(e) => setNewGeoCode(e.target.value.toUpperCase())}
-                      placeholder="KR"
-                      className={`${inputCls} flex-1`}
-                      autoCapitalize="characters"
-                    />
-                    <button type="button" onClick={addGeo} className="tap-scale rounded-lg bg-brand-500 px-3 py-2.5 text-xs font-semibold text-white">
-                      ОК
-                    </button>
-                    <button type="button" onClick={() => setAddingGeo(false)} className="tap-scale rounded-lg bg-white/10 px-3 py-2.5 text-xs">
-                      ✕
+                    <button type="button" onClick={() => setAddingGeo(false)} className="mt-1.5 text-[11px] text-text-faint">
+                      Свернуть
                     </button>
                   </div>
                 )}

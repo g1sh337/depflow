@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useLinks } from "@/lib/useLinks";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/useAuth";
-import { useAdminLinkActions, useGeos, createGeo, deleteGeo } from "@/lib/useAdmin";
+import { useAdminLinkActions, useGeos, deleteGeo, updateGeo } from "@/lib/useAdmin";
 import { useWorkerSharePct, updateWorkerSharePct } from "@/lib/useTeam";
 import { LinkFormSheet } from "@/components/LinkFormSheet";
+import { GeoPicker } from "@/components/GeoPicker";
 import { apiFetch } from "@/lib/api";
 import { IS_DEMO } from "@/lib/demo";
-import { haptic } from "@/lib/utils";
+import { haptic, geoLabel } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import type { LinkTodayStats } from "@/lib/types";
 
@@ -75,20 +76,18 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AuditItem[] | null>(null);
 
   const { data: geos } = useGeos();
-  const [geoName, setGeoName] = useState("");
-  const [geoFlag, setGeoFlag] = useState("");
+  const [editGeoId, setEditGeoId] = useState<string | null>(null);
+  const [editTag, setEditTag] = useState("");
 
-  async function addGeo() {
-    if (!geoName.trim()) return;
+  async function saveGeoTag(id: string) {
     try {
-      await createGeo(geoName.trim(), geoFlag.trim() || "🌐");
+      await updateGeo(id, { tag: editTag.trim() || null });
       qc.invalidateQueries({ queryKey: ["geos"] });
-      setGeoName("");
-      setGeoFlag("");
+      setEditGeoId(null);
       haptic("success");
-      toast.show({ message: "Гео добавлено", kind: "success" });
+      toast.show({ message: "Гео обновлено", kind: "success" });
     } catch {
-      toast.show({ message: "Не удалось добавить гео", kind: "error" });
+      toast.show({ message: "Не удалось сохранить", kind: "error" });
     }
   }
 
@@ -281,7 +280,7 @@ export default function AdminPage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold">{l.name}</p>
                 <p className="text-[11px] text-text-faint">
-                  План: {l.plan_count} деп · ${l.plan_amount} · {l.geo_code}
+                  План: {l.plan_count} деп · ${l.plan_amount} · {geoLabel(l.geo_code, l.geo_tag)}
                 </p>
               </div>
               <button onClick={() => openEdit(l)} className="tap-scale rounded-lg bg-white/10 px-3 py-1.5 text-xs">
@@ -328,38 +327,47 @@ export default function AdminPage() {
 
       {tab === "geo" && (
         <div className="mt-4 space-y-3">
-          <div className="glass p-3">
-            <p className="mb-2 text-[11px] text-text-faint">
-              Добавь любое гео — название свободное (можно «EG 1xbet», «RU raybet» и т.п.), флаг по желанию.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                value={geoFlag}
-                onChange={(e) => setGeoFlag(e.target.value)}
-                placeholder="🇪🇬"
-                className="w-14 rounded-lg border border-border bg-white/5 px-2 py-2.5 text-center text-sm outline-none focus:border-brand-500"
-              />
-              <input
-                value={geoName}
-                onChange={(e) => setGeoName(e.target.value)}
-                placeholder="Название гео (EG, RU3, Korea 1x…)"
-                className="flex-1 rounded-lg border border-border bg-white/5 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
-              />
-              <button onClick={addGeo} className="tap-scale rounded-lg bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white">
-                +
-              </button>
-            </div>
-          </div>
+          <GeoPicker onCreated={() => qc.invalidateQueries({ queryKey: ["geos"] })} />
           {(geos ?? []).map((g) => (
-            <div key={g.id} className="glass flex items-center gap-3 p-3">
-              <span className="text-xl">{g.flag_emoji}</span>
-              <span className="flex-1 text-sm font-semibold">{g.code}</span>
-              <button
-                onClick={() => removeGeo(g.id, `${g.flag_emoji ?? ""} ${g.code}`)}
-                className="tap-scale rounded-md bg-status-danger/15 px-2.5 py-1.5 text-xs text-status-danger"
-              >
-                🗑
-              </button>
+            <div key={g.id} className="glass p-3">
+              {editGeoId === g.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{g.flag_emoji}</span>
+                  <span className="text-sm font-semibold">{g.code}</span>
+                  <input
+                    value={editTag}
+                    onChange={(e) => setEditTag(e.target.value)}
+                    placeholder="источник"
+                    className="flex-1 rounded-lg border border-border bg-white/5 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                  />
+                  <button onClick={() => saveGeoTag(g.id)} className="tap-scale rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white">
+                    ОК
+                  </button>
+                  <button onClick={() => setEditGeoId(null)} className="tap-scale rounded-md bg-white/10 px-2.5 py-1.5 text-xs">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{g.flag_emoji}</span>
+                  <span className="flex-1 text-sm font-semibold">{geoLabel(g.code, g.tag)}</span>
+                  <button
+                    onClick={() => {
+                      setEditGeoId(g.id);
+                      setEditTag(g.tag ?? "");
+                    }}
+                    className="tap-scale rounded-md bg-white/10 px-2.5 py-1.5 text-xs"
+                  >
+                    Тег
+                  </button>
+                  <button
+                    onClick={() => removeGeo(g.id, geoLabel(g.code, g.tag))}
+                    className="tap-scale rounded-md bg-status-danger/15 px-2.5 py-1.5 text-xs text-status-danger"
+                  >
+                    🗑
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -16,6 +16,8 @@ export interface Geo {
   id: string;
   code: string;
   flag_emoji: string | null;
+  country_code?: string | null;
+  tag?: string | null;
   sort_order: number;
 }
 
@@ -37,6 +39,7 @@ export interface LinkTodayStats {
   geo_id: string | null;
   url: string | null;
   geo_code: string | null;
+  geo_tag?: string | null;
   flag_emoji: string | null;
   plan_count: number;
   plan_amount: number;

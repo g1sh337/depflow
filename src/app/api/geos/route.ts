@@ -23,9 +23,11 @@ export async function GET(req: Request) {
 const Body = z.object({
   code: z.string().trim().min(1).max(40),
   flag_emoji: z.string().trim().max(12).optional().nullable(),
+  country_code: z.string().trim().max(4).optional().nullable(),
+  tag: z.string().trim().max(60).optional().nullable(),
 });
 
-/** POST /api/geos — admin: add a geo (any label; duplicates allowed). */
+/** POST /api/geos — admin: add a geo (country + optional tag; duplicates allowed). */
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
@@ -37,7 +39,13 @@ export async function POST(req: Request) {
     const { count } = await sb.from("geos").select("id", { count: "exact", head: true });
     const { data, error } = await sb
       .from("geos")
-      .insert({ code: parsed.data.code, flag_emoji: parsed.data.flag_emoji || "🌐", sort_order: (count ?? 0) + 1 })
+      .insert({
+        code: parsed.data.code,
+        flag_emoji: parsed.data.flag_emoji || "🌐",
+        country_code: parsed.data.country_code ?? null,
+        tag: parsed.data.tag ?? null,
+        sort_order: (count ?? 0) + 1,
+      })
       .select("*")
       .single();
     if (error) throw error;

@@ -89,7 +89,7 @@ async function buildReport(
   const [depsRes, wdsRes, geosRes, usersRes] = await Promise.all([
     sb.from("deposits").select("amount, type, geo_id, user_id, created_at").eq("is_deleted", false).gte("created_at", fromISO).lte("created_at", toISO),
     sb.from("withdrawals").select("amount, worker_share").eq("is_deleted", false).gte("created_at", fromISO).lte("created_at", toISO),
-    sb.from("geos").select("id, code, flag_emoji"),
+    sb.from("geos").select("id, code, flag_emoji, tag"),
     sb.from("users").select("id, first_name, username"),
   ]);
 
@@ -100,7 +100,8 @@ async function buildReport(
 
   const geoLabel = (id: string | null) => {
     const g = geo.get(id ?? "");
-    return `${g?.flag_emoji ?? "🌐"} ${esc(g?.code ?? "?")}`;
+    const label = g?.tag ? `${g.code} · ${g.tag}` : g?.code ?? "?";
+    return `${g?.flag_emoji ?? "🌐"} ${esc(label)}`;
   };
 
   // aggregate: worker -> geo -> {ftd, redep, sum}

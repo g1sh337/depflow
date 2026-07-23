@@ -38,6 +38,12 @@ export const STATUS_LABEL: Record<PlanStatus, string> = {
   idle: "Нет активности",
 };
 
+/** Compose a geo display label: "KR · 1xbet LUDMILLA" (tag optional). */
+export function geoLabel(code?: string | null, tag?: string | null): string {
+  const c = code ?? "?";
+  return tag ? `${c} · ${tag}` : c;
+}
+
 export function formatMoney(n: number, opts?: { compact?: boolean }): string {
   if (opts?.compact && Math.abs(n) >= 1000) {
     return "$" + (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
