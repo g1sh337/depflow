@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { haptic } from "@/lib/utils";
+import { Portal } from "@/components/Portal";
 
 interface Props {
   open: boolean;
@@ -35,6 +36,7 @@ export function NumpadSheet({ open, title, accent = "#6d6df0", onClose, onConfir
   }
 
   return (
+    <Portal>
     <AnimatePresence>
       {open && (
         <>
@@ -84,5 +86,6 @@ export function NumpadSheet({ open, title, accent = "#6d6df0", onClose, onConfir
         </>
       )}
     </AnimatePresence>
+    </Portal>
   );
 }

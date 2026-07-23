@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useAdmins, sendReport } from "@/lib/useTeam";
 import { useToast } from "@/components/Toast";
 import { haptic } from "@/lib/utils";
+import { Portal } from "@/components/Portal";
 
 export function ReportSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: admins } = useAdmins();
@@ -26,6 +27,7 @@ export function ReportSheet({ open, onClose }: { open: boolean; onClose: () => v
   }
 
   return (
+    <Portal>
     <AnimatePresence>
       {open && (
         <>
@@ -37,7 +39,7 @@ export function ReportSheet({ open, onClose }: { open: boolean; onClose: () => v
             onClick={onClose}
           />
           <motion.div
-            className="glass-strong fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-3xl p-5 pb-8"
+            className="glass-strong no-scrollbar fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[88vh] max-w-lg overflow-y-auto rounded-t-3xl p-5 pb-8"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -84,5 +86,6 @@ export function ReportSheet({ open, onClose }: { open: boolean; onClose: () => v
         </>
       )}
     </AnimatePresence>
+    </Portal>
   );
 }

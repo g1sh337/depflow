@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGeos, useAdminLinkActions, createGeo, type LinkInput } from "@/lib/useAdmin";
 import { useToast } from "@/components/Toast";
 import { haptic } from "@/lib/utils";
+import { Portal } from "@/components/Portal";
 import type { LinkTodayStats } from "@/lib/types";
 
 interface Props {
@@ -105,6 +106,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
   }
 
   return (
+    <Portal>
     <AnimatePresence>
       {open && (
         <>
@@ -116,7 +118,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
             onClick={onClose}
           />
           <motion.div
-            className="glass-strong fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-3xl p-5 pb-8"
+            className="glass-strong no-scrollbar fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[88vh] max-w-lg overflow-y-auto rounded-t-3xl p-5 pb-8"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -214,6 +216,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
         </>
       )}
     </AnimatePresence>
+    </Portal>
   );
 }
 

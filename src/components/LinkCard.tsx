@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import type { DepositType, LinkTodayStats } from "@/lib/types";
 import { cn, formatMoney, haptic, planStatus, STATUS_COLOR, STATUS_LABEL } from "@/lib/utils";
-import { useLinkActions, useEntries } from "@/lib/useLinks";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLinkActions, useEntries, type EntryRow } from "@/lib/useLinks";
 import { useWorkerSharePct } from "@/lib/useTeam";
 import { useToast } from "@/components/Toast";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -19,14 +20,22 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
   const [showLog, setShowLog] = useState(false);
 
   const actions = useLinkActions();
+  const qc = useQueryClient();
   const { data: pct = 25 } = useWorkerSharePct();
   const { data: entries } = useEntries(link.link_id, open && showLog);
   const toast = useToast();
 
   async function deleteEntry(kind: "deposit" | "withdrawal", id: string) {
-    await actions.deleteEntry(kind, id);
+    // optimistic: drop it from the list immediately
+    qc.setQueryData<EntryRow[]>(["entries", link.link_id], (old) => (old ?? []).filter((e) => e.id !== id));
     haptic("medium");
-    toast.show({ message: "Запись удалена", kind: "warn", duration: 3000 });
+    try {
+      await actions.deleteEntry(kind, id);
+      toast.show({ message: "Запись удалена", kind: "warn", duration: 3000 });
+    } catch {
+      qc.invalidateQueries({ queryKey: ["entries", link.link_id] });
+      toast.show({ message: "Не удалось удалить", kind: "error" });
+    }
   }
 
   const status = planStatus(link.plan_pct, link.last_deposit_at);
