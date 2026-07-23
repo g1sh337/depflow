@@ -11,36 +11,42 @@ const minsAgo = (m: number) => new Date(now - m * 60_000).toISOString();
 export const DEMO_LINKS: LinkTodayStats[] = [
   {
     link_id: "l1", name: "RU1", geo_id: "g1", geo_code: "RU1", flag_emoji: "🇷🇺",
+    url: "https://adclickad.com/get/?spot_id=6122897&cat=25&subid=1198441680",
     plan_count: 10, plan_amount: 500, amount_presets: [15, 25, 50, 100],
     is_archived: false, deposits_count: 8, deposits_sum: 340,
     last_deposit_at: minsAgo(12), plan_pct: 80,
   },
   {
     link_id: "l2", name: "RU2", geo_id: "g2", geo_code: "RU2", flag_emoji: "🇷🇺",
+    url: "https://adclickad.com/get/?spot_id=6122898&cat=25&subid=1198441681",
     plan_count: 10, plan_amount: 500, amount_presets: [15, 25, 50, 100],
     is_archived: false, deposits_count: 7, deposits_sum: 295,
     last_deposit_at: minsAgo(40), plan_pct: 70,
   },
   {
     link_id: "l3", name: "EG", geo_id: "g3", geo_code: "EG", flag_emoji: "🇪🇬",
+    url: null,
     plan_count: 15, plan_amount: 450, amount_presets: [10, 20, 30, 50],
     is_archived: false, deposits_count: 15, deposits_sum: 480,
     last_deposit_at: minsAgo(5), plan_pct: 100,
   },
   {
     link_id: "l4", name: "KZ", geo_id: "g4", geo_code: "KZ", flag_emoji: "🇰🇿",
+    url: null,
     plan_count: 12, plan_amount: 400, amount_presets: [15, 30, 60],
     is_archived: false, deposits_count: 3, deposits_sum: 90,
     last_deposit_at: minsAgo(210), plan_pct: 25,
   },
   {
     link_id: "l5", name: "UZ", geo_id: "g5", geo_code: "UZ", flag_emoji: "🇺🇿",
+    url: null,
     plan_count: 8, plan_amount: 320, amount_presets: [20, 40, 80],
     is_archived: false, deposits_count: 9, deposits_sum: 410,
     last_deposit_at: minsAgo(20), plan_pct: 113,
   },
   {
     link_id: "l6", name: "IN", geo_id: "g6", geo_code: "IN", flag_emoji: "🇮🇳",
+    url: null,
     plan_count: 20, plan_amount: 300, amount_presets: [5, 10, 20, 40],
     is_archived: false, deposits_count: 4, deposits_sum: 70,
     last_deposit_at: minsAgo(75), plan_pct: 20,
@@ -109,12 +115,13 @@ export const demoStore = {
   getDeposits: () => [...deposits],
   getWithdrawals: () => [...withdrawals],
 
-  addLink(input: { name: string; geo_id: string; plan_count: number; plan_amount: number; amount_presets: number[] }) {
+  addLink(input: { name: string; geo_id: string; url?: string | null; plan_count: number; plan_amount: number; amount_presets: number[] }) {
     const geo = DEMO_LINKS.find((l) => l.geo_id === input.geo_id);
     links.unshift({
       link_id: crypto.randomUUID(),
       name: input.name,
       geo_id: input.geo_id,
+      url: input.url ?? null,
       geo_code: geo?.geo_code ?? input.name,
       flag_emoji: geo?.flag_emoji ?? "🌐",
       plan_count: input.plan_count,

@@ -10,11 +10,13 @@ interface Props {
   accent?: string;
   onClose: () => void;
   onConfirm: (amount: number) => void;
+  /** Optional live hint under the amount (e.g. the withdrawal split). */
+  renderHint?: (amount: number) => React.ReactNode;
 }
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
-export function NumpadSheet({ open, title, accent = "#6d6df0", onClose, onConfirm }: Props) {
+export function NumpadSheet({ open, title, accent = "#6d6df0", onClose, onConfirm, renderHint }: Props) {
   const [value, setValue] = useState("");
 
   function press(k: string) {
@@ -55,9 +57,11 @@ export function NumpadSheet({ open, title, accent = "#6d6df0", onClose, onConfir
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
             <p className="mb-1 text-center text-sm text-text-soft">{title}</p>
-            <div className="mb-5 text-center text-4xl font-bold tabular-nums" style={{ color: accent }}>
+            <div className="mb-2 text-center text-4xl font-bold tabular-nums" style={{ color: accent }}>
               ${value || "0"}
             </div>
+            {renderHint && <div className="mb-4 min-h-[20px] text-center">{renderHint(parseFloat(value) || 0)}</div>}
+            {!renderHint && <div className="mb-4" />}
             <div className="grid grid-cols-3 gap-2.5">
               {KEYS.map((k) => (
                 <button

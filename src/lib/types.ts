@@ -23,6 +23,7 @@ export interface Link {
   id: string;
   name: string;
   geo_id: string | null;
+  url: string | null;
   plan_count: number;
   plan_amount: number;
   amount_presets: number[];
@@ -34,6 +35,7 @@ export interface LinkTodayStats {
   link_id: string;
   name: string;
   geo_id: string | null;
+  url: string | null;
   geo_code: string | null;
   flag_emoji: string | null;
   plan_count: number;

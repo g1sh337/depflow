@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { DepositType, LinkTodayStats } from "@/lib/types";
 import { cn, formatMoney, haptic, planStatus, STATUS_COLOR, STATUS_LABEL } from "@/lib/utils";
 import { useLinkActions } from "@/lib/useLinks";
+import { useWorkerSharePct } from "@/lib/useTeam";
 import { useToast } from "@/components/Toast";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { NumpadSheet } from "@/components/NumpadSheet";
@@ -16,6 +17,7 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
   const [busy, setBusy] = useState(false);
 
   const actions = useLinkActions();
+  const { data: pct = 25 } = useWorkerSharePct();
   const toast = useToast();
 
   const status = planStatus(link.plan_pct, link.last_deposit_at);
@@ -50,9 +52,13 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
   }
 
   async function doWithdraw(amount: number) {
-    await actions.addWithdrawal(link.link_id, amount);
+    const split = await actions.addWithdrawal(link.link_id, amount);
     haptic("success");
-    toast.show({ message: `${link.name}: вывод ${formatMoney(amount)}`, kind: "warn", duration: 4000 });
+    toast.show({
+      message: `Выведено ${formatMoney(split.amount)} · ${formatMoney(split.company_share)} в счёт · ${formatMoney(split.worker_share)} тебе`,
+      kind: "warn",
+      duration: 6000,
+    });
   }
 
   return (
@@ -98,6 +104,22 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
               exit={{ height: 0, opacity: 0 }}
               className="border-t border-border px-4 pb-4"
             >
+              {/* offer URL */}
+              {link.url && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(link.url!);
+                    haptic("light");
+                    toast.show({ message: "Ссылка скопирована", kind: "success", duration: 2000 });
+                  }}
+                  className="tap-scale mt-3 flex w-full items-center gap-2 rounded-xl border border-border bg-white/5 px-3 py-2 text-left"
+                >
+                  <span className="text-sm">🔗</span>
+                  <span className="flex-1 truncate text-[11px] text-text-soft">{link.url}</span>
+                  <span className="text-[10px] text-text-faint">копировать</span>
+                </button>
+              )}
+
               {/* FTD / redep toggle */}
               <div className="my-3 flex rounded-xl bg-white/5 p-1 text-xs font-semibold">
                 {(["ftd", "redep"] as const).map((t) => (
@@ -173,6 +195,16 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
           setNumpad(null);
           doWithdraw(amt);
         }}
+        renderHint={(amt) =>
+          amt > 0 ? (
+            <span className="text-xs text-text-soft">
+              <span className="text-status-success">{formatMoney(Math.round(amt * (100 - pct)) / 100)}</span> в счёт ·{" "}
+              <span className="text-status-warn">{formatMoney(Math.round(amt * pct) / 100)}</span> тебе ({pct}%)
+            </span>
+          ) : (
+            <span className="text-xs text-text-faint">введи сумму вывода</span>
+          )
+        }
       />
     </>
   );

@@ -64,10 +64,10 @@ export default function AnalyticsPage() {
             <StatCard index={1} label="Сумма депозитов" value={formatMoney(data.kpis.depSum, { compact: true })} accent="#4dc9ff" />
             <StatCard index={2} label="Выводов" value={`${data.kpis.wdCount}`} accent="#ffb84d" />
             <StatCard index={3} label="Сумма выводов" value={formatMoney(data.kpis.wdSum, { compact: true })} accent="#ff5c7a" />
-            <StatCard index={4} label="Чистый результат" value={formatMoney(data.kpis.net, { compact: true })} accent={data.kpis.net >= 0 ? "#3ddc84" : "#ff5c7a"} />
-            <StatCard index={5} label="ROI" value={data.kpis.roi === null ? "н/д" : `${data.kpis.roi}%`} sub={data.kpis.roi === null ? "нужны расходы" : undefined} accent="#a78bfa" />
-            <StatCard index={6} label="Средний депозит" value={formatMoney(data.kpis.avgDep)} accent="#6d6df0" />
-            <StatCard index={7} label="Средний вывод" value={formatMoney(data.kpis.avgWd)} accent="#ffb84d" />
+            <StatCard index={4} label="Доля работников" value={formatMoney(data.kpis.workerTotal, { compact: true })} sub={`${data.worker_share_pct}% от выводов`} accent="#ffb84d" />
+            <StatCard index={5} label="Чистый (начальник)" value={formatMoney(data.kpis.bossNet, { compact: true })} sub="выводы − доля − депы" accent={data.kpis.bossNet >= 0 ? "#3ddc84" : "#ff5c7a"} />
+            <StatCard index={6} label="ROI" value={data.kpis.roi === null ? "н/д" : `${data.kpis.roi}%`} sub={data.kpis.roi === null ? "нужны расходы" : undefined} accent="#a78bfa" />
+            <StatCard index={7} label="Средний депозит" value={formatMoney(data.kpis.avgDep)} accent="#6d6df0" />
           </div>
 
           {/* trend chart */}
@@ -122,6 +122,48 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* per-link calc table */}
+          <div className="glass mt-4 overflow-hidden p-4">
+            <p className="mb-1 text-sm font-semibold">Расчёты по ссылкам</p>
+            <p className="mb-3 text-[11px] text-text-faint">
+              Чистый = выводы − доля работника ({data.worker_share_pct}%) − депозиты
+            </p>
+            {data.byLink.length === 0 ? (
+              <p className="py-4 text-center text-xs text-text-faint">Нет данных за период</p>
+            ) : (
+              <div className="no-scrollbar overflow-x-auto">
+                <table className="w-full text-right text-[11px] tabular-nums">
+                  <thead>
+                    <tr className="text-text-faint">
+                      <th className="pb-2 text-left font-medium">Ссылка</th>
+                      <th className="pb-2 font-medium">Деп</th>
+                      <th className="pb-2 font-medium">Σ деп</th>
+                      <th className="pb-2 font-medium">Редеп</th>
+                      <th className="pb-2 font-medium">Вывод</th>
+                      <th className="pb-2 font-medium">Работник</th>
+                      <th className="pb-2 font-medium">Чистый</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.byLink.map((r) => (
+                      <tr key={r.link_id} className="border-t border-border">
+                        <td className="py-2 text-left font-semibold text-text">{r.name}</td>
+                        <td className="py-2 text-text-soft">{r.dep_count}</td>
+                        <td className="py-2 text-text-soft">{formatMoney(r.dep_sum, { compact: true })}</td>
+                        <td className="py-2 text-text-soft">{formatMoney(r.redep_sum, { compact: true })}</td>
+                        <td className="py-2 text-text-soft">{formatMoney(r.wd_sum, { compact: true })}</td>
+                        <td className="py-2 text-status-warn">{formatMoney(r.worker_share, { compact: true })}</td>
+                        <td className={`py-2 font-semibold ${r.boss_net >= 0 ? "text-status-success" : "text-status-danger"}`}>
+                          {formatMoney(r.boss_net, { compact: true })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

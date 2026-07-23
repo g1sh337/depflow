@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const PatchBody = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   geo_id: z.string().uuid().optional(),
+  url: z.string().trim().max(500).optional().nullable(),
   plan_count: z.number().int().min(0).max(100000).optional(),
   plan_amount: z.number().min(0).max(10_000_000).optional(),
   amount_presets: z.array(z.number().positive()).max(8).optional(),

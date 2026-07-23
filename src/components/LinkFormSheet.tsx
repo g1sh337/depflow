@@ -21,6 +21,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
 
   const [name, setName] = useState("");
   const [geoId, setGeoId] = useState("");
+  const [url, setUrl] = useState("");
   const [planCount, setPlanCount] = useState("10");
   const [planAmount, setPlanAmount] = useState("0");
   const [presets, setPresets] = useState("15, 25, 50, 100");
@@ -31,12 +32,14 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
     if (editing) {
       setName(editing.name);
       setGeoId(editing.geo_id ?? "");
+      setUrl(editing.url ?? "");
       setPlanCount(String(editing.plan_count));
       setPlanAmount(String(editing.plan_amount));
       setPresets((editing.amount_presets ?? []).join(", "));
     } else {
       setName("");
       setGeoId(geos?.[0]?.id ?? "");
+      setUrl("");
       setPlanCount("10");
       setPlanAmount("0");
       setPresets("15, 25, 50, 100");
@@ -56,6 +59,7 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
     const input: LinkInput = {
       name: name.trim(),
       geo_id: geoId,
+      url: url.trim() || null,
       plan_count: parseInt(planCount) || 0,
       plan_amount: parseFloat(planAmount) || 0,
       amount_presets: parsedPresets.length ? parsedPresets : [15, 25, 50, 100],
@@ -124,6 +128,17 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
                   <input value={planAmount} onChange={(e) => setPlanAmount(e.target.value)} inputMode="numeric" className={inputCls} />
                 </Field>
               </div>
+
+              <Field label="URL ссылки (оффер)">
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://adclickad.com/get/?spot_id=..."
+                  className={inputCls}
+                  inputMode="url"
+                  autoCapitalize="off"
+                />
+              </Field>
 
               <Field label="Быстрые суммы (через запятую)">
                 <input value={presets} onChange={(e) => setPresets(e.target.value)} placeholder="15, 25, 50, 100" className={inputCls} />

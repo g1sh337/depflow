@@ -6,9 +6,23 @@ export interface Kpis {
   wdCount: number;
   wdSum: number;
   net: number;
+  workerTotal: number;
+  bossNet: number;
   roi: number | null; // null when no expense data
   avgDep: number;
   avgWd: number;
+}
+
+export interface LinkCalcRow {
+  link_id: string;
+  name: string;
+  geo_code: string;
+  dep_count: number;
+  dep_sum: number;
+  redep_sum: number;
+  wd_sum: number;
+  worker_share: number;
+  boss_net: number;
 }
 
 export interface TrendPoint {
@@ -72,25 +86,58 @@ export function getDemoAnalytics(period: Period) {
     value: Math.round(l.deposits_sum * (days === 1 ? 1 : days * 0.7)),
   }));
 
+  const workerTotal = Math.round(wdSum * 0.25);
+  const bossNet = wdSum - workerTotal - depSum;
+
   const kpis: Kpis = {
     depCount,
     depSum,
     wdCount,
     wdSum,
     net: depSum - wdSum,
+    workerTotal,
+    bossNet,
     roi: null, // no expense data tracked in demo → honest "н/д"
     avgDep: depCount ? Math.round(depSum / depCount) : 0,
     avgWd: wdCount ? Math.round(wdSum / wdCount) : 0,
   };
 
-  return { kpis, trend, geo };
+  const mult = days === 1 ? 1 : days * 0.7;
+  const byLink: LinkCalcRow[] = live.map((l) => {
+    const dep = Math.round(l.deposits_sum * mult);
+    const wd = Math.round(dep * 1.6);
+    const worker = Math.round(wd * 0.25);
+    return {
+      link_id: l.link_id,
+      name: l.name,
+      geo_code: l.geo_code ?? "",
+      dep_count: Math.round(l.deposits_count * mult),
+      dep_sum: dep,
+      redep_sum: Math.round(dep * 0.3),
+      wd_sum: wd,
+      worker_share: worker,
+      boss_net: wd - worker - dep,
+    };
+  });
+
+  return { kpis, trend, geo, byLink, worker_share_pct: 25 };
 }
 
 export async function loadAnalytics(period: Period) {
   if (IS_DEMO) return getDemoAnalytics(period);
   const { apiFetch } = await import("./api");
-  const data = await apiFetch<{ kpis: Kpis; trend: TrendPoint[]; geo: GeoSlice[] }>(
-    `/api/analytics?period=${period}`,
-  );
-  return { kpis: data.kpis, trend: data.trend, geo: data.geo };
+  const data = await apiFetch<{
+    kpis: Kpis;
+    trend: TrendPoint[];
+    geo: GeoSlice[];
+    byLink: LinkCalcRow[];
+    worker_share_pct: number;
+  }>(`/api/analytics?period=${period}`);
+  return {
+    kpis: data.kpis,
+    trend: data.trend,
+    geo: data.geo,
+    byLink: data.byLink ?? [],
+    worker_share_pct: data.worker_share_pct ?? 25,
+  };
 }

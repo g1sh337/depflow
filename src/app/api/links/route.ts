@@ -27,6 +27,7 @@ export async function GET(req: Request) {
 const CreateBody = z.object({
   name: z.string().trim().min(1).max(60),
   geo_id: z.string().uuid(),
+  url: z.string().trim().max(500).optional().nullable(),
   plan_count: z.number().int().min(0).max(100000),
   plan_amount: z.number().min(0).max(10_000_000).default(0),
   amount_presets: z.array(z.number().positive()).max(8).default([15, 25, 50, 100]),

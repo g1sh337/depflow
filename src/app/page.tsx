@@ -6,7 +6,8 @@ import { useLinks } from "@/lib/useLinks";
 import { LinkCard } from "@/components/LinkCard";
 import { LinkCardSkeleton } from "@/components/ui/Skeleton";
 import { RingProgress } from "@/components/ui/RingProgress";
-import { formatMoney } from "@/lib/utils";
+import { ReportSheet } from "@/components/ReportSheet";
+import { formatMoney, haptic } from "@/lib/utils";
 import type { LinkTodayStats } from "@/lib/types";
 
 type Sort = "best" | "worst" | "plan" | "az";
@@ -20,6 +21,7 @@ const SORTS: { key: Sort; label: string }[] = [
 export default function DashboardPage() {
   const { data: links, isLoading } = useLinks();
   const [sort, setSort] = useState<Sort>("best");
+  const [reportOpen, setReportOpen] = useState(false);
 
   const sorted = useMemo(() => {
     if (!links) return [];
@@ -36,7 +38,7 @@ export default function DashboardPage() {
 
   return (
     <main className="flex-1 px-4 pt-4">
-      <Header />
+      <Header onReport={() => { haptic("light"); setReportOpen(true); }} />
 
       {/* HERO */}
       <motion.section
@@ -85,11 +87,13 @@ export default function DashboardPage() {
           ? Array.from({ length: 5 }).map((_, i) => <LinkCardSkeleton key={i} />)
           : sorted.map((l) => <LinkCard key={l.link_id} link={l} />)}
       </div>
+
+      <ReportSheet open={reportOpen} onClose={() => setReportOpen(false)} />
     </main>
   );
 }
 
-function Header() {
+function Header({ onReport }: { onReport: () => void }) {
   const date = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
     <div className="flex items-center justify-between">
@@ -97,7 +101,12 @@ function Header() {
         <p className="text-xs text-text-faint">Сегодня · {date}</p>
         <h1 className="text-xl font-bold">Дашборд</h1>
       </div>
-      <div className="glass grid h-10 w-10 place-items-center rounded-full text-sm font-bold">DF</div>
+      <button
+        onClick={onReport}
+        className="tap-scale glass flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-text-soft"
+      >
+        📤 Начальнику
+      </button>
     </div>
   );
 }

@@ -5,10 +5,12 @@ import { useLinks } from "@/lib/useLinks";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/useAuth";
 import { useAdminLinkActions } from "@/lib/useAdmin";
+import { useWorkerSharePct, updateWorkerSharePct } from "@/lib/useTeam";
 import { LinkFormSheet } from "@/components/LinkFormSheet";
 import { apiFetch } from "@/lib/api";
 import { IS_DEMO } from "@/lib/demo";
 import { haptic } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import type { LinkTodayStats } from "@/lib/types";
 
 interface InviteKey {
@@ -28,6 +30,29 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"links" | "keys" | "audit">("links");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<LinkTodayStats | null>(null);
+
+  const { data: pct } = useWorkerSharePct();
+  const qc = useQueryClient();
+  const [pctInput, setPctInput] = useState<string>("");
+  useEffect(() => {
+    if (pct != null && pctInput === "") setPctInput(String(pct));
+  }, [pct]);
+
+  async function saveSharePct() {
+    const v = parseFloat(pctInput);
+    if (isNaN(v) || v < 0 || v > 100) {
+      toast.show({ message: "Введите число 0–100", kind: "error" });
+      return;
+    }
+    try {
+      if (!IS_DEMO) await updateWorkerSharePct(v);
+      qc.invalidateQueries({ queryKey: ["settings", "worker_share_pct"] });
+      haptic("success");
+      toast.show({ message: `Доля работника: ${v}%`, kind: "success" });
+    } catch {
+      toast.show({ message: "Не удалось сохранить", kind: "error" });
+    }
+  }
 
   function openCreate() {
     haptic("light");
@@ -95,6 +120,24 @@ export default function AdminPage() {
     <main className="flex-1 px-4 pt-4">
       <h1 className="text-xl font-bold">Управление</h1>
       <p className="text-xs text-text-faint">Доступно роли «Администратор»</p>
+
+      {/* worker share setting */}
+      <div className="glass mt-3 flex items-center gap-3 p-3">
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Доля работника</p>
+          <p className="text-[11px] text-text-faint">% от каждого вывода в пользу работника</p>
+        </div>
+        <input
+          value={pctInput}
+          onChange={(e) => setPctInput(e.target.value)}
+          inputMode="decimal"
+          className="w-16 rounded-lg border border-border bg-white/5 px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-brand-500"
+        />
+        <span className="text-sm text-text-soft">%</span>
+        <button onClick={saveSharePct} className="tap-scale rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white">
+          ОК
+        </button>
+      </div>
 
       <div className="mt-3 flex rounded-xl bg-white/5 p-1 text-xs font-semibold">
         {([["links", "Ссылки"], ["keys", "Ключи"], ["audit", "Журнал"]] as const).map(([k, label]) => (

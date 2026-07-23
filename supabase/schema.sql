@@ -62,6 +62,7 @@ create table if not exists links (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
   geo_id        uuid references geos(id),
+  url           text,
   plan_count    int not null default 0,
   plan_amount   numeric(12,2) not null default 0,
   amount_presets jsonb not null default '[15,25,50,100]'::jsonb,
@@ -84,13 +85,24 @@ create table if not exists deposits (
 
 -- ---------- WITHDRAWALS (profit taken out) ----------
 create table if not exists withdrawals (
-  id          uuid primary key default gen_random_uuid(),
-  link_id     uuid not null references links(id),
-  amount      numeric(12,2) not null check (amount > 0),
-  user_id     uuid not null references users(id),
-  is_deleted  boolean not null default false,
-  created_at  timestamptz not null default now()
+  id            uuid primary key default gen_random_uuid(),
+  link_id       uuid not null references links(id),
+  amount        numeric(12,2) not null check (amount > 0),
+  worker_share  numeric(12,2) not null default 0,
+  user_id       uuid not null references users(id),
+  is_deleted    boolean not null default false,
+  created_at    timestamptz not null default now()
 );
+
+-- Global app settings (single row).
+create table if not exists app_settings (
+  id                int primary key default 1,
+  worker_share_pct  numeric(5,2) not null default 25,
+  updated_at        timestamptz not null default now(),
+  constraint app_settings_singleton check (id = 1)
+);
+insert into app_settings (id, worker_share_pct) values (1, 25)
+on conflict (id) do nothing;
 
 -- ---------- EXPENSES (traffic cost, optional — needed for true ROI) ----------
 create table if not exists expenses (
@@ -140,6 +152,7 @@ select
   l.id                                   as link_id,
   l.name,
   l.geo_id,
+  l.url,
   g.code                                 as geo_code,
   g.flag_emoji,
   l.plan_count,

@@ -8,6 +8,7 @@ import type { Geo } from "./types";
 export interface LinkInput {
   name: string;
   geo_id: string;
+  url?: string | null;
   plan_count: number;
   plan_amount: number;
   amount_presets: number[];
