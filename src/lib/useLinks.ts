@@ -54,6 +54,7 @@ export function useLinkActions() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["links"] });
     qc.invalidateQueries({ queryKey: ["entries"] });
+    qc.invalidateQueries({ queryKey: ["me-stats"] });
   };
 
   return {

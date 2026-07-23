@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useGeos, useAdminLinkActions, type LinkInput } from "@/lib/useAdmin";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGeos, useAdminLinkActions, createGeo, type LinkInput } from "@/lib/useAdmin";
 import { useToast } from "@/components/Toast";
 import { haptic } from "@/lib/utils";
 import type { LinkTodayStats } from "@/lib/types";
@@ -18,6 +19,27 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
   const { data: geos } = useGeos();
   const actions = useAdminLinkActions();
   const toast = useToast();
+  const qc = useQueryClient();
+
+  const [addingGeo, setAddingGeo] = useState(false);
+  const [newGeoCode, setNewGeoCode] = useState("");
+  const [newGeoFlag, setNewGeoFlag] = useState("");
+
+  async function addGeo() {
+    if (!newGeoCode.trim()) return;
+    try {
+      const geo = await createGeo(newGeoCode.trim(), newGeoFlag.trim() || "🌐");
+      await qc.invalidateQueries({ queryKey: ["geos"] });
+      setGeoId(geo.id);
+      setNewGeoCode("");
+      setNewGeoFlag("");
+      setAddingGeo(false);
+      haptic("success");
+      toast.show({ message: `Гео ${geo.flag_emoji ?? ""} ${geo.code} добавлено`, kind: "success" });
+    } catch (e: any) {
+      toast.show({ message: e?.body?.reason === "duplicate" ? "Такое гео уже есть" : "Не удалось добавить гео", kind: "error" });
+    }
+  }
 
   const [name, setName] = useState("");
   const [geoId, setGeoId] = useState("");
@@ -118,6 +140,37 @@ export function LinkFormSheet({ open, editing, onClose }: Props) {
                     </option>
                   ))}
                 </select>
+                {!addingGeo ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddingGeo(true)}
+                    className="mt-1.5 text-[11px] font-semibold text-brand-400"
+                  >
+                    + Новое гео
+                  </button>
+                ) : (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      value={newGeoFlag}
+                      onChange={(e) => setNewGeoFlag(e.target.value)}
+                      placeholder="🇰🇷"
+                      className={`${inputCls} w-14 text-center`}
+                    />
+                    <input
+                      value={newGeoCode}
+                      onChange={(e) => setNewGeoCode(e.target.value.toUpperCase())}
+                      placeholder="KR"
+                      className={`${inputCls} flex-1`}
+                      autoCapitalize="characters"
+                    />
+                    <button type="button" onClick={addGeo} className="tap-scale rounded-lg bg-brand-500 px-3 py-2.5 text-xs font-semibold text-white">
+                      ОК
+                    </button>
+                    <button type="button" onClick={() => setAddingGeo(false)} className="tap-scale rounded-lg bg-white/10 px-3 py-2.5 text-xs">
+                      ✕
+                    </button>
+                  </div>
+                )}
               </Field>
 
               <div className="flex gap-3">

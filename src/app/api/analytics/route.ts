@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const TZ_OFFSET_MS = 3 * 3600_000; // Europe/Moscow (UTC+3), matches the day view
 
-type Period = "today" | "yesterday" | "7d" | "30d" | "month";
+type Period = "today" | "yesterday" | "7d" | "30d";
 
 function rangeFor(period: Period): { from: Date; to: Date; buckets: number } {
   const now = new Date();
@@ -26,7 +26,6 @@ function rangeFor(period: Period): { from: Date; to: Date; buckets: number } {
     case "7d":
       return { from: new Date(today0.getTime() - 6 * 86400_000), to: now, buckets: 7 };
     case "30d":
-    case "month":
       return { from: new Date(today0.getTime() - 29 * 86400_000), to: now, buckets: 30 };
   }
 }
@@ -42,13 +41,14 @@ export async function GET(req: Request) {
     const [depsRes, wdsRes, geosRes, linksRes] = await Promise.all([
       sb.from("deposits").select("amount, type, link_id, geo_id, created_at").eq("is_deleted", false).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
       sb.from("withdrawals").select("amount, worker_share, link_id, created_at").eq("is_deleted", false).gte("created_at", from.toISOString()).lte("created_at", to.toISOString()),
-      sb.from("geos").select("id, code"),
+      sb.from("geos").select("id, code, flag_emoji"),
       sb.from("links").select("id, name, geo_id"),
     ]);
 
     const deposits = depsRes.data ?? [];
     const withdrawals = wdsRes.data ?? [];
     const geoMap = new Map((geosRes.data ?? []).map((g) => [g.id, g.code]));
+    const flagMap = new Map((geosRes.data ?? []).map((g) => [g.id, g.flag_emoji ?? "🌐"]));
     const links = linksRes.data ?? [];
 
     const depSum = deposits.reduce((s, d) => s + Number(d.amount), 0);
@@ -75,12 +75,15 @@ export async function GET(req: Request) {
     }
 
     // geo split (by deposit amount)
-    const geoAgg = new Map<string, number>();
+    const geoAgg = new Map<string, { flag: string; value: number }>();
     for (const d of deposits) {
       const code = geoMap.get(d.geo_id ?? "") ?? "?";
-      geoAgg.set(code, (geoAgg.get(code) ?? 0) + Number(d.amount));
+      const flag = flagMap.get(d.geo_id ?? "") ?? "🌐";
+      const cur = geoAgg.get(code) ?? { flag, value: 0 };
+      cur.value += Number(d.amount);
+      geoAgg.set(code, cur);
     }
-    const geo = [...geoAgg.entries()].map(([g, value]) => ({ geo: g, value })).sort((a, b) => b.value - a.value);
+    const geo = [...geoAgg.entries()].map(([g, v]) => ({ geo: g, flag: v.flag, value: v.value })).sort((a, b) => b.value - a.value);
 
     // per-link financial breakdown
     const byLink = links
@@ -96,6 +99,7 @@ export async function GET(req: Request) {
           link_id: l.id,
           name: l.name,
           geo_code: geoMap.get(l.geo_id ?? "") ?? "",
+          geo_flag: flagMap.get(l.geo_id ?? "") ?? "🌐",
           dep_count: depCnt,
           dep_sum: dep,
           redep_sum: redep,

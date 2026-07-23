@@ -17,6 +17,7 @@ export interface LinkCalcRow {
   link_id: string;
   name: string;
   geo_code: string;
+  geo_flag?: string;
   dep_count: number;
   dep_sum: number;
   redep_sum: number;
@@ -33,6 +34,7 @@ export interface TrendPoint {
 
 export interface GeoSlice {
   geo: string;
+  flag?: string;
   value: number;
 }
 
@@ -42,14 +44,13 @@ export interface HourPoint {
   sum: number;
 }
 
-export type Period = "today" | "yesterday" | "7d" | "30d" | "month";
+export type Period = "today" | "yesterday" | "7d" | "30d";
 
 export const PERIODS: { key: Period; label: string }[] = [
   { key: "today", label: "Сегодня" },
   { key: "yesterday", label: "Вчера" },
   { key: "7d", label: "7 дней" },
   { key: "30d", label: "30 дней" },
-  { key: "month", label: "Месяц" },
 ];
 
 /** Deterministic pseudo-random from a seed, for stable demo data. */
@@ -61,7 +62,7 @@ function seeded(n: number) {
 export function getDemoAnalytics(period: Period) {
   // base from live "today" links + a synthetic history
   const live = demoStore.getLinks();
-  const days = period === "7d" ? 7 : period === "30d" || period === "month" ? 30 : 1;
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 1;
 
   const trend: TrendPoint[] = [];
   let depCount = 0,
@@ -89,6 +90,7 @@ export function getDemoAnalytics(period: Period) {
 
   const geo: GeoSlice[] = DEMO_LINKS.map((l) => ({
     geo: l.geo_code ?? "?",
+    flag: l.flag_emoji ?? "🌐",
     value: Math.round(l.deposits_sum * (days === 1 ? 1 : days * 0.7)),
   }));
 
@@ -117,6 +119,7 @@ export function getDemoAnalytics(period: Period) {
       link_id: l.link_id,
       name: l.name,
       geo_code: l.geo_code ?? "",
+      geo_flag: l.flag_emoji ?? "🌐",
       dep_count: Math.round(l.deposits_count * mult),
       dep_sum: dep,
       redep_sum: Math.round(dep * 0.3),

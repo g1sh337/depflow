@@ -21,7 +21,7 @@ import { formatMoney } from "@/lib/utils";
 const GEO_COLORS = ["#6d6df0", "#4dc9ff", "#3ddc84", "#ffb84d", "#ff5c7a", "#a78bfa"];
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState<Period>("7d");
+  const [period, setPeriod] = useState<Period>("today");
   const [data, setData] = useState<Awaited<ReturnType<typeof loadAnalytics>> | null>(null);
 
   useEffect(() => {
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
                   <div key={g.geo} className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: GEO_COLORS[i % GEO_COLORS.length] }} />
-                      {g.geo}
+                      {g.flag} {g.geo}
                     </span>
                     <span className="tabular-nums text-text-soft">{formatMoney(g.value, { compact: true })}</span>
                   </div>
@@ -182,7 +182,9 @@ export default function AnalyticsPage() {
                   <tbody>
                     {data.byLink.map((r) => (
                       <tr key={r.link_id} className="border-t border-border">
-                        <td className="py-2 text-left font-semibold text-text">{r.name}</td>
+                        <td className="py-2 text-left font-semibold text-text">
+                          {r.geo_flag} {r.name}
+                        </td>
                         <td className="py-2 text-text-soft">{r.dep_count}</td>
                         <td className="py-2 text-text-soft">{formatMoney(r.dep_sum, { compact: true })}</td>
                         <td className="py-2 text-text-soft">{formatMoney(r.redep_sum, { compact: true })}</td>

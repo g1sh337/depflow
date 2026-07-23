@@ -10,6 +10,9 @@ export function getInitData(): string {
 export async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
+    // Telegram's in-app webview aggressively caches identical GET URLs —
+    // force fresh responses so deletes/updates reflect immediately.
+    cache: "no-store",
     headers: {
       "content-type": "application/json",
       "x-telegram-init-data": getInitData(),

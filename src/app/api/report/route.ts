@@ -60,36 +60,56 @@ export async function POST(req: Request) {
 async function buildReport(sb: ReturnType<typeof getServiceClient>, who: string, bossNick: string): Promise<string> {
   const from = todayStart().toISOString();
 
-  const [depsRes, wdsRes, geosRes, linksRes] = await Promise.all([
-    sb.from("deposits").select("amount, link_id, geo_id").eq("is_deleted", false).gte("created_at", from),
+  const [depsRes, wdsRes, geosRes, usersRes] = await Promise.all([
+    sb.from("deposits").select("amount, type, geo_id, user_id, created_at").eq("is_deleted", false).gte("created_at", from).order("created_at", { ascending: true }),
     sb.from("withdrawals").select("amount, worker_share").eq("is_deleted", false).gte("created_at", from),
-    sb.from("geos").select("id, code"),
-    sb.from("links").select("id, name"),
+    sb.from("geos").select("id, code, flag_emoji"),
+    sb.from("users").select("id, first_name, username"),
   ]);
 
   const deposits = depsRes.data ?? [];
   const withdrawals = wdsRes.data ?? [];
-  const linkName = new Map((linksRes.data ?? []).map((l) => [l.id, l.name]));
+  const geo = new Map((geosRes.data ?? []).map((g) => [g.id, g]));
+  const userName = new Map((usersRes.data ?? []).map((u) => [u.id, u.first_name || (u.username ? `@${u.username}` : "?")]));
 
-  // deposits count per link
-  const perLink = new Map<string, number>();
-  for (const d of deposits) {
-    const name = linkName.get(d.link_id ?? "") ?? "?";
-    perLink.set(name, (perLink.get(name) ?? 0) + 1);
-  }
-
+  const date = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   const depSum = deposits.reduce((s, d) => s + Number(d.amount), 0);
   const wdSum = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   const workerSum = withdrawals.reduce((s, w) => s + Number(w.worker_share ?? 0), 0);
-  const date = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
-  const lines = [...perLink.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} — ${c}`);
+  // group deposits by worker, keep insertion order
+  const byUser = new Map<string, typeof deposits>();
+  for (const d of deposits) {
+    const uid = d.user_id ?? "?";
+    if (!byUser.has(uid)) byUser.set(uid, []);
+    byUser.get(uid)!.push(d);
+  }
+
+  let body = "";
+  if (byUser.size === 0) {
+    body = "Депов за сегодня нет.\n";
+  } else {
+    for (const [uid, deps] of byUser) {
+      let sum = 0;
+      body += `\n👤 *${userName.get(uid) ?? "?"}*\n`;
+      for (const d of deps) {
+        const g = geo.get(d.geo_id ?? "");
+        const flag = g?.flag_emoji ?? "🌐";
+        const code = g?.code ?? "";
+        const redep = d.type === "redep" ? " 🔄" : "";
+        body += `${flag} ${code} — ${Number(d.amount)}$${redep}\n`;
+        sum += Number(d.amount);
+      }
+      body += `└ ${deps.length} деп · $${sum.toLocaleString("en-US")}\n`;
+    }
+  }
 
   return (
-    `📊 *Отчёт за ${date}* (от ${who})\n\n` +
-    `*Кол-во депов:*\n${lines.length ? lines.join("\n") : "—"}\n\n` +
-    `*Сумма депов:* $${depSum.toLocaleString("en-US")}\n` +
-    `*Сумма выводов:* $${wdSum.toLocaleString("en-US")}\n` +
+    `📊 *Дэпы отчёт · ${date}*\n` +
+    body +
+    `\n━━━━━━━━━━\n` +
+    `*Всего депов:* ${deposits.length} · $${depSum.toLocaleString("en-US")}\n` +
+    `*Выводы:* $${wdSum.toLocaleString("en-US")}\n` +
     `*Доля работников:* $${workerSum.toLocaleString("en-US")}\n` +
     `*Чистый (${bossNick}):* $${(wdSum - workerSum - depSum).toLocaleString("en-US")}`
   );

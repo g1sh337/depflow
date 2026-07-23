@@ -35,6 +35,15 @@ export function useGeos() {
   });
 }
 
+export async function createGeo(code: string, flag_emoji: string): Promise<Geo> {
+  if (IS_DEMO) return { id: crypto.randomUUID(), code, flag_emoji, sort_order: 99 };
+  const { geo } = await apiFetch<{ geo: Geo }>("/api/geos", {
+    method: "POST",
+    body: JSON.stringify({ code, flag_emoji }),
+  });
+  return geo;
+}
+
 export function useAdminLinkActions() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["links"] });
