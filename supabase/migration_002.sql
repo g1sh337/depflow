@@ -20,7 +20,9 @@ on conflict (id) do nothing;
 alter table withdrawals add column if not exists worker_share numeric(12,2) not null default 0;
 
 -- Recreate the dashboard view to expose the link URL.
-create or replace view link_today_stats as
+-- DROP first: create-or-replace can't insert a column mid-list.
+drop view if exists link_today_stats;
+create view link_today_stats as
 select
   l.id                                   as link_id,
   l.name,
