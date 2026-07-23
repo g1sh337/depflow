@@ -20,6 +20,15 @@ interface InviteKey {
   used_by?: string | null;
 }
 
+interface TeamUser {
+  id: string;
+  telegram_id: number;
+  first_name: string | null;
+  username: string | null;
+  role: "admin" | "user";
+  is_active: boolean;
+}
+
 export default function AdminPage() {
   const { data: links } = useLinks();
   const { isAdmin } = useAuth();
@@ -27,7 +36,29 @@ export default function AdminPage() {
   const toast = useToast();
   const [keys, setKeys] = useState<InviteKey[]>([]);
   const [creating, setCreating] = useState(false);
-  const [tab, setTab] = useState<"links" | "keys" | "audit">("links");
+  const [tab, setTab] = useState<"links" | "keys" | "people" | "audit">("links");
+  const [team, setTeam] = useState<TeamUser[]>([]);
+
+  useEffect(() => {
+    if (IS_DEMO || tab !== "people") return;
+    apiFetch<{ users: TeamUser[] }>("/api/users")
+      .then((d) => setTeam(d.users ?? []))
+      .catch(() => {});
+  }, [tab]);
+
+  async function toggleRole(u: TeamUser) {
+    const nextRole = u.role === "admin" ? "user" : "admin";
+    try {
+      if (!IS_DEMO) await apiFetch(`/api/users/${u.id}`, { method: "PATCH", body: JSON.stringify({ role: nextRole }) });
+      setTeam((t) => t.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
+      qc.invalidateQueries({ queryKey: ["admins"] });
+      haptic("success");
+      toast.show({ message: nextRole === "admin" ? `${u.first_name ?? "Пользователь"} — теперь начальник` : `${u.first_name ?? "Пользователь"} — теперь работник`, kind: "success" });
+    } catch (e: any) {
+      const reason = e?.body?.reason;
+      toast.show({ message: reason === "last_admin" ? "Нельзя убрать последнего админа" : "Не удалось изменить роль", kind: "error" });
+    }
+  }
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<LinkTodayStats | null>(null);
 
@@ -140,7 +171,7 @@ export default function AdminPage() {
       </div>
 
       <div className="mt-3 flex rounded-xl bg-white/5 p-1 text-xs font-semibold">
-        {([["links", "Ссылки"], ["keys", "Ключи"], ["audit", "Журнал"]] as const).map(([k, label]) => (
+        {([["links", "Ссылки"], ["keys", "Ключи"], ["people", "Люди"], ["audit", "Журнал"]] as const).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -208,6 +239,34 @@ export default function AdminPage() {
               >
                 {k.used_by ? "активирован" : "свободен"} · {k.role}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "people" && (
+        <div className="mt-4 space-y-2">
+          <p className="text-[11px] text-text-faint">
+            «Начальник» (админ) получает отчёты и может управлять. Нажми роль, чтобы поменять.
+          </p>
+          {IS_DEMO && <p className="pt-4 text-center text-xs text-text-faint">В демо-режиме список команды пуст</p>}
+          {team.map((u) => (
+            <div key={u.id} className="glass flex items-center gap-3 p-3">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold">
+                {(u.first_name ?? "U").charAt(0)}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">{u.first_name ?? "Без имени"}</p>
+                {u.username && <p className="text-[11px] text-text-faint">@{u.username}</p>}
+              </div>
+              <button
+                onClick={() => toggleRole(u)}
+                className={`tap-scale rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  u.role === "admin" ? "bg-brand-500/20 text-brand-400" : "bg-white/10 text-text-soft"
+                }`}
+              >
+                {u.role === "admin" ? "👑 Начальник" : "Работник"}
+              </button>
             </div>
           ))}
         </div>

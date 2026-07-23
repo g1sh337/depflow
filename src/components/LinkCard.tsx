@@ -4,21 +4,30 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import type { DepositType, LinkTodayStats } from "@/lib/types";
 import { cn, formatMoney, haptic, planStatus, STATUS_COLOR, STATUS_LABEL } from "@/lib/utils";
-import { useLinkActions } from "@/lib/useLinks";
+import { useLinkActions, useEntries } from "@/lib/useLinks";
 import { useWorkerSharePct } from "@/lib/useTeam";
 import { useToast } from "@/components/Toast";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { NumpadSheet } from "@/components/NumpadSheet";
+import { formatTime } from "@/lib/utils";
 
 export function LinkCard({ link }: { link: LinkTodayStats }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<DepositType>("ftd");
   const [numpad, setNumpad] = useState<null | "deposit" | "withdraw">(null);
   const [busy, setBusy] = useState(false);
+  const [showLog, setShowLog] = useState(false);
 
   const actions = useLinkActions();
   const { data: pct = 25 } = useWorkerSharePct();
+  const { data: entries } = useEntries(link.link_id, open && showLog);
   const toast = useToast();
+
+  async function deleteEntry(kind: "deposit" | "withdrawal", id: string) {
+    await actions.deleteEntry(kind, id);
+    haptic("medium");
+    toast.show({ message: "Запись удалена", kind: "warn", duration: 3000 });
+  }
 
   const status = planStatus(link.plan_pct, link.last_deposit_at);
   const color = STATUS_COLOR[status];
@@ -171,6 +180,51 @@ export function LinkCard({ link }: { link: LinkTodayStats }) {
               >
                 − Зафиксировать вывод
               </button>
+
+              {/* today's entries — delete mistakes */}
+              <button
+                onClick={() => {
+                  haptic("light");
+                  setShowLog((s) => !s);
+                }}
+                className="mt-3 flex w-full items-center justify-center gap-1 text-[11px] text-text-faint"
+              >
+                {showLog ? "▲ Скрыть операции" : "▼ Операции за сегодня"}
+              </button>
+
+              {showLog && (
+                <div className="mt-2 space-y-1.5">
+                  {!entries || entries.length === 0 ? (
+                    <p className="py-2 text-center text-[11px] text-text-faint">Пока нет операций</p>
+                  ) : (
+                    entries.map((e) => (
+                      <div key={e.id} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-2 text-xs">
+                        <span>{e.kind === "deposit" ? "➕" : "➖"}</span>
+                        <span className="flex-1">
+                          <span className={e.kind === "deposit" ? "text-brand-400" : "text-status-danger"}>
+                            {formatMoney(e.amount)}
+                          </span>
+                          <span className="ml-1 text-text-faint">
+                            {e.kind === "deposit"
+                              ? e.type === "ftd"
+                                ? "· FTD"
+                                : "· redep"
+                              : `· тебе ${formatMoney(e.worker_share ?? 0)}`}
+                          </span>
+                        </span>
+                        <span className="text-[10px] text-text-faint">{formatTime(e.created_at)}</span>
+                        <button
+                          onClick={() => deleteEntry(e.kind, e.id)}
+                          className="tap-scale rounded-md bg-status-danger/15 px-2 py-1 text-status-danger"
+                          aria-label="Удалить"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -30,11 +30,19 @@ export async function POST(req: Request) {
     const sb = getServiceClient();
     const who = user.first_name || user.username || "Работник";
 
+    // recipient (the chosen boss) — for labelling the report
+    const { data: boss } = await sb
+      .from("users")
+      .select("first_name, username")
+      .eq("telegram_id", to_telegram_id)
+      .maybeSingle();
+    const bossNick = boss?.username ? `@${boss.username}` : boss?.first_name || "начальник";
+
     let text: string;
     if (mode === "ping") {
       text = `🔔 *${who}* просит зайти в DepFlow и посмотреть 👀`;
     } else {
-      text = await buildReport(sb, who);
+      text = await buildReport(sb, who, bossNick);
     }
 
     const bot = getBot();
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function buildReport(sb: ReturnType<typeof getServiceClient>, who: string): Promise<string> {
+async function buildReport(sb: ReturnType<typeof getServiceClient>, who: string, bossNick: string): Promise<string> {
   const from = todayStart().toISOString();
 
   const [depsRes, wdsRes, geosRes, linksRes] = await Promise.all([
@@ -83,6 +91,6 @@ async function buildReport(sb: ReturnType<typeof getServiceClient>, who: string)
     `*Сумма депов:* $${depSum.toLocaleString("en-US")}\n` +
     `*Сумма выводов:* $${wdSum.toLocaleString("en-US")}\n` +
     `*Доля работников:* $${workerSum.toLocaleString("en-US")}\n` +
-    `*Чистый (начальник):* $${(wdSum - workerSum - depSum).toLocaleString("en-US")}`
+    `*Чистый (${bossNick}):* $${(wdSum - workerSum - depSum).toLocaleString("en-US")}`
   );
 }

@@ -115,6 +115,21 @@ export const demoStore = {
   getDeposits: () => [...deposits],
   getWithdrawals: () => [...withdrawals],
 
+  removeWithdrawal(id: string) {
+    const idx = withdrawals.findIndex((w) => w.id === id);
+    if (idx !== -1) withdrawals.splice(idx, 1);
+  },
+
+  getEntries(linkId: string) {
+    const d = deposits
+      .filter((x) => x.link_id === linkId)
+      .map((x) => ({ id: x.id, kind: "deposit" as const, amount: x.amount, type: x.type, worker_share: null, created_at: x.created_at }));
+    const w = withdrawals
+      .filter((x) => x.link_id === linkId)
+      .map((x) => ({ id: x.id, kind: "withdrawal" as const, amount: x.amount, type: null, worker_share: Math.round(x.amount * 25) / 100, created_at: x.created_at }));
+    return [...d, ...w].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  },
+
   addLink(input: { name: string; geo_id: string; url?: string | null; plan_count: number; plan_amount: number; amount_presets: number[] }) {
     const geo = DEMO_LINKS.find((l) => l.geo_id === input.geo_id);
     links.unshift({
