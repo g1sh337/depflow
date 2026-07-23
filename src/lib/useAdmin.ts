@@ -44,6 +44,11 @@ export async function createGeo(code: string, flag_emoji: string): Promise<Geo> 
   return geo;
 }
 
+export async function deleteGeo(id: string) {
+  if (IS_DEMO) return;
+  await apiFetch(`/api/geos/${id}`, { method: "DELETE" });
+}
+
 export function useAdminLinkActions() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["links"] });

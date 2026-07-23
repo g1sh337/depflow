@@ -39,11 +39,18 @@ export function useAdmins() {
   });
 }
 
-export async function sendReport(toTelegramId: number, mode: "report" | "ping") {
+export type ReportPeriod = "today" | "yesterday" | "7d" | "30d" | "custom";
+
+export async function sendReport(
+  toTelegramId: number,
+  mode: "report" | "ping",
+  period: ReportPeriod = "today",
+  days?: number,
+) {
   if (IS_DEMO) return { ok: true };
   return apiFetch("/api/report", {
     method: "POST",
-    body: JSON.stringify({ to_telegram_id: toTelegramId, mode }),
+    body: JSON.stringify({ to_telegram_id: toTelegramId, mode, period, days }),
   });
 }
 

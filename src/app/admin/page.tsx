@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useLinks } from "@/lib/useLinks";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/useAuth";
-import { useAdminLinkActions } from "@/lib/useAdmin";
+import { useAdminLinkActions, useGeos, createGeo, deleteGeo } from "@/lib/useAdmin";
 import { useWorkerSharePct, updateWorkerSharePct } from "@/lib/useTeam";
 import { LinkFormSheet } from "@/components/LinkFormSheet";
 import { apiFetch } from "@/lib/api";
@@ -70,9 +70,39 @@ export default function AdminPage() {
   const toast = useToast();
   const [keys, setKeys] = useState<InviteKey[]>([]);
   const [creating, setCreating] = useState(false);
-  const [tab, setTab] = useState<"links" | "keys" | "people" | "audit">("links");
+  const [tab, setTab] = useState<"links" | "keys" | "geo" | "people" | "audit">("links");
   const [team, setTeam] = useState<TeamUser[]>([]);
   const [audit, setAudit] = useState<AuditItem[] | null>(null);
+
+  const { data: geos } = useGeos();
+  const [geoName, setGeoName] = useState("");
+  const [geoFlag, setGeoFlag] = useState("");
+
+  async function addGeo() {
+    if (!geoName.trim()) return;
+    try {
+      await createGeo(geoName.trim(), geoFlag.trim() || "🌐");
+      qc.invalidateQueries({ queryKey: ["geos"] });
+      setGeoName("");
+      setGeoFlag("");
+      haptic("success");
+      toast.show({ message: "Гео добавлено", kind: "success" });
+    } catch {
+      toast.show({ message: "Не удалось добавить гео", kind: "error" });
+    }
+  }
+
+  async function removeGeo(id: string, label: string) {
+    if (!confirm(`Удалить гео «${label}»?`)) return;
+    try {
+      await deleteGeo(id);
+      qc.invalidateQueries({ queryKey: ["geos"] });
+      haptic("medium");
+      toast.show({ message: "Гео удалено", kind: "warn" });
+    } catch (e: any) {
+      toast.show({ message: e?.body?.reason === "in_use" ? "Гео используется в ссылках" : "Не удалось удалить", kind: "error" });
+    }
+  }
 
   async function loadTeam() {
     if (IS_DEMO) return;
@@ -222,12 +252,12 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div className="mt-3 flex rounded-xl bg-white/5 p-1 text-xs font-semibold">
-        {([["links", "Ссылки"], ["keys", "Ключи"], ["people", "Люди"], ["audit", "Журнал"]] as const).map(([k, label]) => (
+      <div className="no-scrollbar mt-3 flex gap-1 overflow-x-auto rounded-xl bg-white/5 p-1 text-xs font-semibold">
+        {([["links", "Ссылки"], ["keys", "Ключи"], ["geo", "Гео"], ["people", "Люди"], ["audit", "Журнал"]] as const).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`flex-1 rounded-lg py-2 transition-colors ${tab === k ? "bg-brand-500 text-white" : "text-text-faint"}`}
+            className={`flex-1 whitespace-nowrap rounded-lg px-3 py-2 transition-colors ${tab === k ? "bg-brand-500 text-white" : "text-text-faint"}`}
           >
             {label}
           </button>
@@ -291,6 +321,45 @@ export default function AdminPage() {
               >
                 {k.used_by ? "активирован" : "свободен"} · {k.role}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "geo" && (
+        <div className="mt-4 space-y-3">
+          <div className="glass p-3">
+            <p className="mb-2 text-[11px] text-text-faint">
+              Добавь любое гео — название свободное (можно «EG 1xbet», «RU raybet» и т.п.), флаг по желанию.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                value={geoFlag}
+                onChange={(e) => setGeoFlag(e.target.value)}
+                placeholder="🇪🇬"
+                className="w-14 rounded-lg border border-border bg-white/5 px-2 py-2.5 text-center text-sm outline-none focus:border-brand-500"
+              />
+              <input
+                value={geoName}
+                onChange={(e) => setGeoName(e.target.value)}
+                placeholder="Название гео (EG, RU3, Korea 1x…)"
+                className="flex-1 rounded-lg border border-border bg-white/5 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+              />
+              <button onClick={addGeo} className="tap-scale rounded-lg bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white">
+                +
+              </button>
+            </div>
+          </div>
+          {(geos ?? []).map((g) => (
+            <div key={g.id} className="glass flex items-center gap-3 p-3">
+              <span className="text-xl">{g.flag_emoji}</span>
+              <span className="flex-1 text-sm font-semibold">{g.code}</span>
+              <button
+                onClick={() => removeGeo(g.id, `${g.flag_emoji ?? ""} ${g.code}`)}
+                className="tap-scale rounded-md bg-status-danger/15 px-2.5 py-1.5 text-xs text-status-danger"
+              >
+                🗑
+              </button>
             </div>
           ))}
         </div>

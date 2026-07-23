@@ -21,11 +21,11 @@ export async function GET(req: Request) {
 }
 
 const Body = z.object({
-  code: z.string().trim().min(1).max(12),
-  flag_emoji: z.string().trim().max(8).optional().nullable(),
+  code: z.string().trim().min(1).max(40),
+  flag_emoji: z.string().trim().max(12).optional().nullable(),
 });
 
-/** POST /api/geos — admin: add a new geo (country). */
+/** POST /api/geos — admin: add a geo (any label; duplicates allowed). */
 export async function POST(req: Request) {
   try {
     const user = await requireUser(req);
@@ -37,18 +37,16 @@ export async function POST(req: Request) {
     const { count } = await sb.from("geos").select("id", { count: "exact", head: true });
     const { data, error } = await sb
       .from("geos")
-      .insert({ code: parsed.data.code, flag_emoji: parsed.data.flag_emoji ?? "🌐", sort_order: (count ?? 0) + 1 })
+      .insert({ code: parsed.data.code, flag_emoji: parsed.data.flag_emoji || "🌐", sort_order: (count ?? 0) + 1 })
       .select("*")
       .single();
-    if (error) {
-      if ((error as any).code === "23505") return NextResponse.json({ ok: false, reason: "duplicate" }, { status: 409 });
-      throw error;
-    }
+    if (error) throw error;
 
     await logAudit(user.id, "create", "geo", data!.id, parsed.data);
     return NextResponse.json({ ok: true, geo: data });
   } catch (e) {
     if (e instanceof Response) return e;
+    console.error("[api/geos POST]", e);
     return NextResponse.json({ ok: false, reason: "server_error" }, { status: 500 });
   }
 }
