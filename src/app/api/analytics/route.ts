@@ -66,6 +66,14 @@ export async function GET(req: Request) {
     for (const d of deposits) trend[idxFor(d.created_at)].deposits += Number(d.amount);
     for (const w of withdrawals) trend[idxFor(w.created_at)].withdrawals += Number(w.amount);
 
+    // deposits by hour-of-day (Moscow tz) — activity timing
+    const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0, sum: 0 }));
+    for (const d of deposits) {
+      const localH = new Date(new Date(d.created_at).getTime() + TZ_OFFSET_MS).getUTCHours();
+      byHour[localH].count += 1;
+      byHour[localH].sum += Number(d.amount);
+    }
+
     // geo split (by deposit amount)
     const geoAgg = new Map<string, number>();
     for (const d of deposits) {
@@ -116,6 +124,7 @@ export async function GET(req: Request) {
       },
       trend,
       geo,
+      byHour,
       byLink,
     });
   } catch (e) {

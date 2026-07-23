@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-}
-
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -18,13 +14,31 @@ body {
 body {
   background: #0a0b0f;
   background-image:
-    radial-gradient(1000px 600px at 15% -10%, rgba(109, 109, 240, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, rgba(77, 201, 255, 0.12), transparent 55%);
+    radial-gradient(1100px 640px at 12% -12%, rgba(109, 109, 240, 0.20), transparent 60%),
+    radial-gradient(900px 520px at 112% 6%, rgba(77, 201, 255, 0.13), transparent 55%),
+    radial-gradient(700px 700px at 88% 108%, rgba(255, 122, 182, 0.08), transparent 60%);
   background-attachment: fixed;
   color: #f2f3f7;
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+}
+
+/* Subtle film grain for a less-flat, premium feel */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* keep app content above the grain */
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 @layer components {

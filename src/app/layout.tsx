@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Manrope } from "next/font/google";
 import { Providers } from "./providers";
 import { TabBar } from "@/components/TabBar";
 import { AuthGate } from "@/components/AuthGate";
 import "./globals.css";
+
+const manrope = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DepFlow",
@@ -20,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="ru" className={manrope.variable}>
       <head>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>

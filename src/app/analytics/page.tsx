@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   Cell,
   Pie,
   PieChart,
@@ -93,6 +95,37 @@ export default function AnalyticsPage() {
                 <Area type="monotone" dataKey="deposits" name="Депозиты" stroke="#6d6df0" strokeWidth={2} fill="url(#gDep)" />
                 <Area type="monotone" dataKey="withdrawals" name="Выводы" stroke="#ff5c7a" strokeWidth={2} fill="url(#gWd)" />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* deposits by hour */}
+          <div className="glass mt-4 p-4">
+            <p className="mb-1 text-sm font-semibold">Депозиты по времени</p>
+            <p className="mb-3 text-[11px] text-text-faint">В какие часы больше активности (МСК)</p>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={data.byHour} margin={{ left: -24, right: 4 }}>
+                <defs>
+                  <linearGradient id="gHour" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#4dc9ff" />
+                    <stop offset="100%" stopColor="#6d6df0" />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="hour"
+                  tick={{ fill: "#6b7085", fontSize: 9 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={2}
+                  tickFormatter={(h) => `${h}:00`}
+                />
+                <Tooltip
+                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  contentStyle={{ background: "#101219", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 12 }}
+                  labelFormatter={(h) => `${h}:00–${h}:59`}
+                  formatter={(v: number, n) => [n === "count" ? `${v} деп` : formatMoney(Number(v)), n === "count" ? "Кол-во" : "Сумма"]}
+                />
+                <Bar dataKey="count" fill="url(#gHour)" radius={[4, 4, 0, 0]} maxBarSize={14} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
 

@@ -29,6 +29,40 @@ interface TeamUser {
   is_active: boolean;
 }
 
+interface AuditItem {
+  id: string;
+  action: string;
+  entity_type: string | null;
+  changes: any;
+  created_at: string;
+  user_name: string;
+}
+
+const ACTION_ICON: Record<string, string> = {
+  create: "➕",
+  update: "✏️",
+  delete: "🗑",
+  archive: "📦",
+  login: "🔓",
+};
+const ENTITY_LABEL: Record<string, string> = {
+  deposit: "депозит",
+  withdrawal: "вывод",
+  link: "ссылку",
+  invite_key: "инвайт-ключ",
+  user: "пользователя",
+  settings: "настройки",
+  report: "отчёт",
+};
+
+function auditText(a: AuditItem): string {
+  const verb =
+    a.action === "create" ? "создал" : a.action === "update" ? "изменил" : a.action === "delete" ? "удалил" : a.action === "archive" ? "архивировал" : "вошёл";
+  const ent = a.entity_type ? ENTITY_LABEL[a.entity_type] ?? a.entity_type : "";
+  const amt = a.changes?.amount ? ` $${a.changes.amount}` : "";
+  return a.action === "login" ? `${a.user_name} вошёл в систему` : `${a.user_name} ${verb} ${ent}${amt}`.trim();
+}
+
 export default function AdminPage() {
   const { data: links } = useLinks();
   const { isAdmin } = useAuth();
@@ -38,12 +72,20 @@ export default function AdminPage() {
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<"links" | "keys" | "people" | "audit">("links");
   const [team, setTeam] = useState<TeamUser[]>([]);
+  const [audit, setAudit] = useState<AuditItem[] | null>(null);
 
   useEffect(() => {
     if (IS_DEMO || tab !== "people") return;
     apiFetch<{ users: TeamUser[] }>("/api/users")
       .then((d) => setTeam(d.users ?? []))
       .catch(() => {});
+  }, [tab]);
+
+  useEffect(() => {
+    if (IS_DEMO || tab !== "audit") return;
+    apiFetch<{ items: AuditItem[] }>("/api/audit-logs")
+      .then((d) => setAudit(d.items ?? []))
+      .catch(() => setAudit([]));
   }, [tab]);
 
   async function toggleRole(u: TeamUser) {
@@ -274,15 +316,25 @@ export default function AdminPage() {
 
       {tab === "audit" && (
         <div className="mt-4 space-y-2">
-          {DEMO_AUDIT.map((a, i) => (
-            <div key={i} className="glass flex items-center gap-3 p-3 text-xs">
-              <span className="text-base">{a.icon}</span>
-              <div className="flex-1">
-                <p className="text-text">{a.text}</p>
-                <p className="text-[10px] text-text-faint">{a.time}</p>
+          {IS_DEMO ? (
+            <p className="pt-4 text-center text-xs text-text-faint">Журнал доступен в реальном режиме</p>
+          ) : audit === null ? (
+            <p className="pt-4 text-center text-xs text-text-faint">Загрузка…</p>
+          ) : audit.length === 0 ? (
+            <p className="pt-4 text-center text-xs text-text-faint">Пока нет действий</p>
+          ) : (
+            audit.map((a) => (
+              <div key={a.id} className="glass flex items-center gap-3 p-3 text-xs">
+                <span className="text-base">{ACTION_ICON[a.action] ?? "•"}</span>
+                <div className="flex-1">
+                  <p className="text-text">{auditText(a)}</p>
+                  <p className="text-[10px] text-text-faint">
+                    {new Date(a.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
@@ -290,11 +342,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
-const DEMO_AUDIT = [
-  { icon: "➕", text: "Игорь добавил депозит $50 · RU1", time: "14:32" },
-  { icon: "➖", text: "Анна зафиксировала вывод $200 · EG", time: "14:05" },
-  { icon: "✏️", text: "Админ изменил план RU2: 8 → 10", time: "12:20" },
-  { icon: "🔑", text: "Создан инвайт-ключ ABC-123-XYZ", time: "11:47" },
-  { icon: "🔓", text: "Игорь вошёл в систему", time: "09:10" },
-];

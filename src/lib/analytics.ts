@@ -36,6 +36,12 @@ export interface GeoSlice {
   value: number;
 }
 
+export interface HourPoint {
+  hour: number;
+  count: number;
+  sum: number;
+}
+
 export type Period = "today" | "yesterday" | "7d" | "30d" | "month";
 
 export const PERIODS: { key: Period; label: string }[] = [
@@ -120,7 +126,14 @@ export function getDemoAnalytics(period: Period) {
     };
   });
 
-  return { kpis, trend, geo, byLink, worker_share_pct: 25 };
+  // synthetic hourly distribution (bell-ish around working hours)
+  const byHour: HourPoint[] = Array.from({ length: 24 }, (_, h) => {
+    const base = Math.max(0, Math.sin((h - 6) / 24 * Math.PI) * 8);
+    const count = Math.round(base * (0.6 + seeded(h + 3)));
+    return { hour: h, count, sum: count * 40 };
+  });
+
+  return { kpis, trend, geo, byHour, byLink, worker_share_pct: 25 };
 }
 
 export async function loadAnalytics(period: Period) {
@@ -130,6 +143,7 @@ export async function loadAnalytics(period: Period) {
     kpis: Kpis;
     trend: TrendPoint[];
     geo: GeoSlice[];
+    byHour: HourPoint[];
     byLink: LinkCalcRow[];
     worker_share_pct: number;
   }>(`/api/analytics?period=${period}`);
@@ -137,6 +151,7 @@ export async function loadAnalytics(period: Period) {
     kpis: data.kpis,
     trend: data.trend,
     geo: data.geo,
+    byHour: data.byHour ?? [],
     byLink: data.byLink ?? [],
     worker_share_pct: data.worker_share_pct ?? 25,
   };
