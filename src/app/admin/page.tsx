@@ -74,11 +74,18 @@ export default function AdminPage() {
   const [team, setTeam] = useState<TeamUser[]>([]);
   const [audit, setAudit] = useState<AuditItem[] | null>(null);
 
+  async function loadTeam() {
+    if (IS_DEMO) return;
+    try {
+      const d = await apiFetch<{ users: TeamUser[] }>("/api/users");
+      setTeam(d.users ?? []);
+    } catch {
+      /* ignore */
+    }
+  }
+
   useEffect(() => {
-    if (IS_DEMO || tab !== "people") return;
-    apiFetch<{ users: TeamUser[] }>("/api/users")
-      .then((d) => setTeam(d.users ?? []))
-      .catch(() => {});
+    if (tab === "people") loadTeam();
   }, [tab]);
 
   useEffect(() => {
@@ -90,13 +97,16 @@ export default function AdminPage() {
 
   async function toggleRole(u: TeamUser) {
     const nextRole = u.role === "admin" ? "user" : "admin";
+    // optimistic
+    setTeam((t) => t.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
     try {
       if (!IS_DEMO) await apiFetch(`/api/users/${u.id}`, { method: "PATCH", body: JSON.stringify({ role: nextRole }) });
-      setTeam((t) => t.map((x) => (x.id === u.id ? { ...x, role: nextRole } : x)));
+      await loadTeam(); // authoritative: reflect true DB state
       qc.invalidateQueries({ queryKey: ["admins"] });
       haptic("success");
       toast.show({ message: nextRole === "admin" ? `${u.first_name ?? "Пользователь"} — теперь начальник` : `${u.first_name ?? "Пользователь"} — теперь работник`, kind: "success" });
     } catch (e: any) {
+      await loadTeam(); // revert to server truth on failure
       const reason = e?.body?.reason;
       toast.show({ message: reason === "last_admin" ? "Нельзя убрать последнего админа" : "Не удалось изменить роль", kind: "error" });
     }

@@ -33,7 +33,9 @@ export function useAdmins() {
       const { admins } = await apiFetch<{ admins: Admin[] }>("/api/admins");
       return admins ?? [];
     },
-    staleTime: 60_000,
+    // always current — a freshly promoted admin must appear in the picker
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
